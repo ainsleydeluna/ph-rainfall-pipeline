@@ -1,0 +1,11 @@
+city_id,city,lat,lon,island_group,climate_type
+manila,Manila,14.60420,120.98220,Luzon,Type I
+baguio,Baguio City,16.41639,120.59306,Luzon,Type I
+tuguegarao,Tuguegarao City,17.61577,121.72285,Luzon,Type III
+legazpi,Legazpi City,13.14125,123.74073,Luzon,Type II
+iloilo,Iloilo City,10.69694,122.56444,Visayas,Type I
+cebu,Cebu City,10.31672,123.89071,Visayas,Type III
+tacloban,Tacloban City,11.24333,125.00472,Visayas,Type II
+cagayan_de_oro,Cagayan de Oro,8.48222,124.64722,Mindanao,Type III
+davao,Davao City,7.07306,125.61278,Mindanao,Type IV
+general_santos,General Santos City,6.11278,125.17167,Mindanao,Type III
