@@ -18,3 +18,27 @@ CREATE TABLE daily_weather_forecasts (
     FOREIGN KEY (city_id) REFERENCES cities(city_id),
     CHECK (precipitation_mm >= 0)
 );
+
+CREATE TABLE ingestion_runs (
+    run_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    partition_date DATE NOT NULL,
+    started_at_utc TIMESTAMPTZ NOT NULL,
+    finished_at_utc TIMESTAMPTZ,
+    status TEXT NOT NULL,
+    processed_files INTEGER NOT NULL DEFAULT 0,
+    prepared_rows INTEGER NOT NULL DEFAULT 0,
+    inserted_rows INTEGER NOT NULL DEFAULT 0,
+    failed_Files INTEGER NOT NULL DEFAULT 0,
+    CHECK(status IN('running','success','failed'))
+);
+
+CREATE INDEX idx_forecasts_forecast_date
+ON daily_weather_forecasts(forecast_date);
+
+SELECT run_id, partition_date, status,
+       processed_files, prepared_rows,
+       inserted_rows, failed_files
+FROM ingestion_runs
+ORDER BY run_id DESC
+LIMIT 1;
+

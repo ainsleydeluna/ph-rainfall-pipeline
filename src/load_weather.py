@@ -81,21 +81,84 @@ def find_latest_partition(raw_dir):
 
     return partitions[-1]
 
+def start_ingestion_run(partition_date,password):
+    sql = """
+        INSERT INTO ingestion_runs (
+            partition_date,started_at_utc,status
+        )
+        VALUES (%s, NOW(), 'running')
+        RETURNING run_id;
+    """
+    with psycopg.connect(
+            dbname="ph_rainfall", user="postgres",
+            password=password,host="localhost",port=5432,
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql, (partition_date,))
+                return cursor.fetchone()[0]
+
+def finish_ingestion_run(
+        run_id,status,processed_files,prepared_rows,inserted_rows,
+        failed_files,password,
+):
+        sql = """
+            UPDATE ingestion_runs
+            SET finished_at_utc = NOW(),status = %s,
+                processed_files = %s, prepared_rows = %s,
+                inserted_rows = %s, failed_files = %s
+            WHERE run_id = %s;
+        """
+
+        values = (
+            status,processed_files,prepared_rows,
+            inserted_rows,failed_files,run_id,
+        )
+
+        with psycopg.connect(
+            dbname="ph_rainfall", user="postgres",
+            password=password, host="localhost", port=5432,
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql, values)
+
+
 def main():
     raw_dir = Path("data/raw/weather")
     partition_dir = find_latest_partition(raw_dir)
+    partition_date = partition_dir.name.removeprefix("dt=")
 
-    print("Selected partition:",partition_dir.name)
-
-    json_files  = list(partition_dir.glob("*.json"))
-    rows,failed_files = load_partition_rows(partition_dir)
     password = getpass("PostgreSQL password: ")
+    run_id = start_ingestion_run(partition_date,password)
 
-    inserted_count = insert_forecast_rows(rows,password)
+    processed_files = 0
+    prepared_rows = 0
+    inserted_rows = 0
+    failed_files = []
+    status = "failed"
+
+    try:
+        json_files  = list(partition_dir.glob("*.json"))
+        processed_files = len(json_files)
+
+        rows,failed_files = load_partition_rows(partition_dir)
+        prepared_rows = len(rows)
+        inserted_rows = insert_forecast_rows(rows,password)
+        status = "failed" if failed_files else "success"
+
+    finally:
+        finish_ingestion_run(
+            run_id,
+            status,
+            processed_files,
+            prepared_rows,
+            inserted_rows,
+            len(failed_files),
+            password,
+        )
 
     print("Processed files:", len(json_files))
     print("Prepared rows:",len(rows))
-    print("Inserted rows:",inserted_count)
+    print("Inserted rows:",inserted_rows)
     print("Failed files:",len(failed_files))
 
     for filename,error in failed_files:
