@@ -4,6 +4,15 @@ from pathlib import Path
 from getpass import getpass
 import psycopg
 
+def connect_database(password):
+    return psycopg.connect(
+        dbname="ph_rainfall",
+        user="postgres",
+        password=password,
+        host="localhost",
+        port=5432
+    )
+
 def load_json(path):
     with path.open("r", encoding ="utf-8") as file:
         return json.load(file)
@@ -58,10 +67,7 @@ def insert_forecast_rows(rows,password):
         ON CONFLICT DO NOTHING;
     """
 
-    with psycopg.connect(
-        dbname="ph_rainfall", user="postgres",
-        password=password,host="localhost",port=5432,
-    ) as connection:
+    with connect_database(password) as connection:
         with connection.cursor() as cursor:
             cursor.executemany(sql,rows)
             return cursor.rowcount
@@ -89,13 +95,10 @@ def start_ingestion_run(partition_date,password):
         VALUES (%s, NOW(), 'running')
         RETURNING run_id;
     """
-    with psycopg.connect(
-            dbname="ph_rainfall", user="postgres",
-            password=password,host="localhost",port=5432,
-        ) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(sql, (partition_date,))
-                return cursor.fetchone()[0]
+    with connect_database(password) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, (partition_date,))
+            return cursor.fetchone()[0]
 
 def finish_ingestion_run(
         run_id,status,processed_files,prepared_rows,inserted_rows,
@@ -114,10 +117,7 @@ def finish_ingestion_run(
             inserted_rows,failed_files,run_id,
         )
 
-        with psycopg.connect(
-            dbname="ph_rainfall", user="postgres",
-            password=password, host="localhost", port=5432,
-        ) as connection:
+        with connect_database(password) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(sql, values)
 
