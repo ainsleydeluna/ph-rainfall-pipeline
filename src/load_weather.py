@@ -1,16 +1,21 @@
+import os
 import json
 import sys
 from pathlib import Path
-from getpass import getpass
 import psycopg
+from dotenv import load_dotenv
 
-def connect_database(password):
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")
+
+
+def connect_database():
     return psycopg.connect(
-        dbname="ph_rainfall",
-        user="postgres",
-        password=password,
-        host="localhost",
-        port=5432
+        dbname=os.getenv("DB_NAME", "ph_rainfall"),
+        user=os.getenv("DB_USER","postgres"),
+        password=os.getenv("DB_PASSWORD"),
+        host=os.getenv("DB_HOST","localhost"),
+        port=int(os.getenv("DB_PORT","5432"))
     )
 
 def load_json(path):
@@ -58,7 +63,7 @@ def load_partition_rows(partition_dir):
 
     return all_rows, failed_files
 
-def insert_forecast_rows(rows,password):
+def insert_forecast_rows(rows):
     sql = """
         INSERT INTO daily_weather_forecasts (
             city_id,forecast_date,precipitation_mm,fetched_at_utc
@@ -67,7 +72,7 @@ def insert_forecast_rows(rows,password):
         ON CONFLICT DO NOTHING;
     """
 
-    with connect_database(password) as connection:
+    with connect_database() as connection:
         with connection.cursor() as cursor:
             cursor.executemany(sql,rows)
             return cursor.rowcount
@@ -87,7 +92,7 @@ def find_latest_partition(raw_dir):
 
     return partitions[-1]
 
-def start_ingestion_run(partition_date,password):
+def start_ingestion_run(partition_date):
     sql = """
         INSERT INTO ingestion_runs (
             partition_date,started_at_utc,status
@@ -95,14 +100,14 @@ def start_ingestion_run(partition_date,password):
         VALUES (%s, NOW(), 'running')
         RETURNING run_id;
     """
-    with connect_database(password) as connection:
+    with connect_database() as connection:
         with connection.cursor() as cursor:
             cursor.execute(sql, (partition_date,))
             return cursor.fetchone()[0]
 
 def finish_ingestion_run(
         run_id,status,processed_files,prepared_rows,inserted_rows,
-        failed_files,password,
+        failed_files,
 ):
         sql = """
             UPDATE ingestion_runs
@@ -117,7 +122,7 @@ def finish_ingestion_run(
             inserted_rows,failed_files,run_id,
         )
 
-        with connect_database(password) as connection:
+        with connect_database() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(sql, values)
 
@@ -127,8 +132,7 @@ def main():
     partition_dir = find_latest_partition(raw_dir)
     partition_date = partition_dir.name.removeprefix("dt=")
 
-    password = getpass("PostgreSQL password: ")
-    run_id = start_ingestion_run(partition_date,password)
+    run_id = start_ingestion_run(partition_date)
 
     processed_files = 0
     prepared_rows = 0
@@ -142,7 +146,7 @@ def main():
 
         rows,failed_files = load_partition_rows(partition_dir)
         prepared_rows = len(rows)
-        inserted_rows = insert_forecast_rows(rows,password)
+        inserted_rows = insert_forecast_rows(rows)
         status = "failed" if failed_files else "success"
 
     finally:
@@ -153,7 +157,6 @@ def main():
             prepared_rows,
             inserted_rows,
             len(failed_files),
-            password,
         )
 
     print("Processed files:", len(json_files))
