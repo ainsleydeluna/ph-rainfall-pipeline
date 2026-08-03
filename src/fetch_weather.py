@@ -141,36 +141,40 @@ def validate_coordinate_ranges(cities):
                 f"Invalid longtitude for {city["city_id"]: {lon}}"
             )
 
+def main():
 
 
 
-seed_path = Path("data/seeds/cities.csv")
-cities = load_cities(seed_path)
-validate_required_values(cities)
-convert_coordinates(cities)
-validate_unique_city_ids(cities)
-validate_coordinate_ranges(cities)
+    seed_path = Path("data/seeds/cities.csv")
+    cities = load_cities(seed_path)
+    validate_required_values(cities)
+    convert_coordinates(cities)
+    validate_unique_city_ids(cities)
+    validate_coordinate_ranges(cities)
 
-EXPECTED_CITY_COUNT = 10
+    EXPECTED_CITY_COUNT = 10
 
-if len(cities) != EXPECTED_CITY_COUNT:
-    raise ValueError(
-        f"Expected {EXPECTED_CITY_COUNT} cities, found {len(cities)}"
-    )
+    if len(cities) != EXPECTED_CITY_COUNT:
+        raise ValueError(
+            f"Expected {EXPECTED_CITY_COUNT} cities, found {len(cities)}"
+        )
 
-success_count = 0
-failure_count = 0
+    success_count = 0
+    failure_count = 0
 
-for city in cities:
-    try:
-        final_path = save_city_weather(city)
-        success_count += 1
-        print(f"SUCCESS: {city["city_id"]} -> {final_path}")
-    except Exception as error:
-        failure_count += 1
-        print(f"FAILED: {city['city_id']} -> {error}")
+    for city in cities:
+        try:
+            final_path = save_city_weather(city)
+            success_count += 1
+            print(f"SUCCESS: {city["city_id"]} -> {final_path}")
+        except Exception as error:
+            failure_count += 1
+            print(f"FAILED: {city['city_id']} -> {error}")
 
-print(f"Summary: {success_count} succeeded, {failure_count} failed")
+    print(f"Summary: {success_count} succeeded, {failure_count} failed")
 
-if failure_count > 0:
-    raise SystemExit(1)
+    if failure_count > 0:
+        raise SystemExit(1)
+
+if __name__ == "__main__":
+    main()
