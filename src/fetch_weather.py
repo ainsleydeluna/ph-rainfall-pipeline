@@ -65,24 +65,33 @@ def write_json_atomic(final_path,data):
     final_path.parent.mkdir(parents="True",exist_ok=True)
     temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
 
-    with temp_path.open("w", encoding ="utf-8") as file:
-        json.dump(data,file,indent=2,ensure_ascii=False)
-
-    temp_path.replace(final_path)
+    try:
+        with temp_path.open("w", encoding ="utf-8") as file:
+            json.dump(data,file,indent=2,ensure_ascii=False)
+        temp_path.replace(final_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
 def save_city_weather(city):
     payload = fetch_weather(city)
     envelope = build_envelope(city,payload)
     partition_date = envelope["metadata"]["fetched_at_utc"][:10]
 
-    final_path = (
-        Path("data/raw/weather")
-        / f"dt={partition_date}"
-        / f"{city["city_id"]}.json"
+    final_path = build_weather_path(
+        city["city_id"],
+        partition_date,
     )
 
     write_json_atomic(final_path,envelope)
     return final_path
+
+def build_weather_path(city_id,partition_date):
+    return (
+        Path("data/raw/weather")
+        / f"dt={partition_date}"
+        / f"{city_id}.json"
+    )
 
 
 def load_cities(csv_path):
