@@ -35,7 +35,23 @@ def test_db_connection(test_db_name):
     connection.close()
 
 @pytest.fixture
-def test_city(test_db_connection):
+def clean_test_city(test_db_connection,):
+    with test_db_connection.cursor() as cursor:
+        cursor.execute(
+            "DELETE FROM daily_weather_forecasts WHERE city_id = %s;",
+            ("test_manila",),
+        )
+        cursor.execute(
+            "DELETE FROM cities where city_id = %s;",
+            ("test_manila",),
+        )
+    test_db_connection.commit()
+
+
+
+
+@pytest.fixture
+def test_city(test_db_connection,clean_test_city):
     with test_db_connection.cursor() as cursor:
         cursor.execute(
             """
@@ -47,6 +63,74 @@ def test_city(test_db_connection):
         )
     yield "test_manila"
     test_db_connection.rollback()
+
+@pytest.fixture
+def committed_test_city(test_db_connection,clean_test_city):
+    with test_db_connection.cursor() as cursor:
+        cursor.execute(
+            """
+           INSERT INTO cities
+                (city_id, city, lat, lon, island_group, climate_type)
+            VALUES (%s, %s, %s, %s, %s, %s);
+            """,
+            ("test_manila", "Test Manila", 14.60, 120.98, "Luzon", "Type I"),
+        )
+
+    test_db_connection.commit()
+
+    yield "test_manila"
+    test_db_connection.rollback()
+
+    with test_db_connection.cursor() as cursor:
+        cursor.execute(
+            """
+            DELETE FROM daily_weather_forecasts
+            WHERE city_id = %s;
+            """,
+            ("test_manila",),
+        )
+        cursor.execute(
+            "DELETE FROM cities where city_id = %s;",
+            ("test_manila",),
+        )
+
+    test_db_connection.commit()
+
+@pytest.fixture
+def use_test_database(monkeypatch, test_db_name):
+    monkeypatch.setenv("DB_NAME", test_db_name)
+    return test_db_name
+
+@pytest.fixture
+def clean_test_audit_runs(test_db_connection):
+    test_db_connection.rollback()
+
+    with test_db_connection.cursor() as cursor:
+        cursor.execute(
+        """
+        DELETE FROM ingestion_runs
+        WHERE partition_date = '2099-01-01';           
+        """
+        )
+
+    test_db_connection.commit()
+
+    yield "2099-01-01"
+
+    test_db_connection.rollback()
+
+    with test_db_connection.cursor() as cursor:
+        cursor.execute(
+            """
+            DELETE FROM ingestion_runs
+            WHERE partition_date = '2099-01-01';
+            """
+        )
+
+    test_db_connection.commit()
+
+
+
 
 
 
