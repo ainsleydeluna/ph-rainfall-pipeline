@@ -35,10 +35,3 @@ CREATE TABLE ingestion_runs (
 CREATE INDEX idx_forecasts_forecast_date
 ON daily_weather_forecasts(forecast_date);
 
-SELECT run_id, partition_date, status,
-       processed_files, prepared_rows,
-       inserted_rows, failed_files
-FROM ingestion_runs
-ORDER BY run_id DESC
-LIMIT 1;
-
