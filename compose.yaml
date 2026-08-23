@@ -29,7 +29,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
     volumes:
-    - ./data/raw:/app/data/raw
+      - ./data/raw:/app/data/raw
 
 volumes:
   postgres_data:
