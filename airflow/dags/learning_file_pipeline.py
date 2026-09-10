@@ -1,4 +1,8 @@
-from datetime import datetime
+# docker compose -f airflow/compose.yaml up -d
+# docker compose -f airflow/compose.yaml ps
+# http://localhost:8080
+
+from datetime import datetime, timedelta
 from pathlib import Path
 from airflow.sdk import dag,task
 
@@ -19,10 +23,10 @@ def learning_file_pipeline():
         file_path.write_text("Airflow learning file", encoding="utf-8")
 
         print(f"Created: {file_path}")
-
-   
-
-    @task
+    @task(
+        retries=1,
+        retry_delay=timedelta(seconds=10),
+    )
     def validate():
         file_path = Path("/opt/airflow/learning_data/message.txt")
 

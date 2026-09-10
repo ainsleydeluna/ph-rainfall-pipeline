@@ -1,14 +1,21 @@
 services:
   airflow:
-    image: apache/airflow:3.3.1
+    build: .
+    image: ph-rainfall-airflow:3.3.1
     command: standalone
     ports:
       - "8080:8080"
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      DB_HOST: host.docker.internal
+      DB_PORT: "5433"
     volumes:
       - airflow_home:/opt/airflow
       - ./dags:/opt/airflow/dags
+      - ../src:/opt/project/src:ro
+      - ../data/seeds:/opt/project/data/seeds:ro
+      - ../data/raw:/opt/project/data/raw
+      - ../.env:/opt/project/.env:ro
 
 volumes:
   airflow_home:
