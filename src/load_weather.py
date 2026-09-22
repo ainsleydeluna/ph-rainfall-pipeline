@@ -3,6 +3,8 @@ import json
 import sys
 from pathlib import Path
 import psycopg
+import argparse
+from datetime import date
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -127,9 +129,45 @@ def finish_ingestion_run(
                 cursor.execute(sql, values)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--partition-date",
+        default=None,
+        help="Partition date in YYYY-MM-DD format",
+    )
+    return parser.parse_args()
+
+def validate_partition_date(value):
+    if value is None:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(
+            "partition date must use YYYY-MM-DD"
+        )
+
+def select_partition(raw_dir, partition_date):
+    if partition_date is None:
+        return find_latest_partition(raw_dir)
+
+    partition_dir = raw_dir / f"dt={partition_date.isoformat()}"
+
+    if not partition_dir.exists():
+        raise FileNotFoundError(
+            f"Partition not found: {partition_dir}"
+        )
+    return partition_dir
+
+
 def main():
+    args = parse_args()
+    partition_date = validate_partition_date(args.partition_date)
+
     raw_dir = Path("data/raw/weather")
-    partition_dir = find_latest_partition(raw_dir)
+    partition_dir = select_partition(raw_dir, partition_date)
     partition_date = partition_dir.name.removeprefix("dt=")
 
     run_id = start_ingestion_run(partition_date)
