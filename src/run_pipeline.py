@@ -9,7 +9,7 @@ def main():
     fetch_exit_code = run_script("fetch_weather.py")
 
     if fetch_exit_code != 0:
-        print("Piepline stopped: weather fetch failed")
+        print("Pipeline stopped: weather fetch failed")
         return fetch_exit_code
 
     print("STEP 2: Loading weather data")
